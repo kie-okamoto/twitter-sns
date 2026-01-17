@@ -11,6 +11,7 @@ class Post extends Model
         'user_id',     // Firebase UID（文字列）
         'content',
         'image_path',
+        'user_name',
     ];
 
     public function likes(): HasMany

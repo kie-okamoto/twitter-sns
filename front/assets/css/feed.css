@@ -1,0 +1,292 @@
+/* /home/y1109/twitter-sns/front/assets/css/feed.css */
+
+/* ===== 全体レイアウト ===== */
+.feed {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  background: #0f1824;
+  color: #fff;
+}
+
+/* ===== 左サイドバー ===== */
+.aside {
+  border-right: 2px solid rgba(255, 255, 255, 0.15);
+  padding: 18px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.brand img {
+  width: 140px;
+  height: auto;
+  display: block;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  text-decoration: none;
+  padding: 10px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.menu__item img {
+  width: 22px;
+  height: 22px;
+}
+
+.menu__item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.menu__item.-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+/* ===== シェア欄 ===== */
+.share {
+  margin-top: 6px;
+}
+
+.share__title {
+  margin: 0 0 8px;
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+.share__input {
+  width: 100%;
+  height: 140px;
+  resize: none;
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  padding: 12px 12px;
+  outline: none;
+}
+
+.share__input:focus {
+  border-color: #6a11cb;
+  box-shadow: 0 0 0 3px rgba(106, 17, 203, 0.18);
+}
+
+/* ===== 共通ボタン ===== */
+.btn {
+  margin-top: 14px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 右寄せボタン用（コメントボタン） */
+.btn.-right {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+/* ===== 右メイン ===== */
+.main {
+  padding: 0;
+}
+
+/* ✅ ② ホームタイトル行（仕様の Div） */
+.homeTitle {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  font-size: 20px;
+  font-weight: 800;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* （残すならOK：将来 main__header 復活用） */
+.main__header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  font-size: 20px;
+  font-weight: 800;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* ===== ③ 投稿（Message） ===== */
+/* ✅ 仕様に合わせて、区切り線で囲み、ホーム行の直下から始める */
+.post {
+  margin: 0 18px;
+  padding: 16px 0 14px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 最初の投稿だけ上線を出す（ホーム行の直下に線がある状態） */
+.post:first-of-type {
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.post__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 10px;
+}
+
+.post__user {
+  font-size: 18px;
+  font-weight: 800;
+  margin-right: 8px;
+}
+
+/* アイコンボタン */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 6px 8px;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.icon:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.icon img {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* 投稿本文 */
+.post__body {
+  padding: 10px 10px 0;
+  font-size: 16px;
+  opacity: 0.95;
+}
+
+/* コメント見出し（非表示のまま） */
+.post__commentsHead {
+  display: none;
+}
+
+/* コメント一覧 */
+.post__comments {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  column-gap: 12px;
+  padding: 6px 0;
+}
+
+.comment__user {
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+.comment__body {
+  opacity: 0.95;
+}
+
+/* コメント入力 */
+.commentForm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px 0;
+}
+
+.commentForm__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  color: #fff;
+  outline: none;
+}
+
+.commentForm__input:focus {
+  border-color: #6a11cb;
+  box-shadow: 0 0 0 3px rgba(106, 17, 203, 0.18);
+}
+
+/* 空表示 */
+.empty {
+  padding: 16px 18px;
+  opacity: 0.8;
+}
+
+/* ===============================
+   ✅ LIKEボタン（いいね：赤表示）
+   ※ index.vue の likeボタンに
+   class="icon likeButton"
+   imgに class="likeButton__icon"
+   を付けている前提
+   =============================== */
+
+.likeButton {
+  /* .icon をベースに、必要最小限だけ追加 */
+  gap: 6px;
+}
+
+/* 通常のハート（軽くアニメ） */
+.likeButton__icon {
+  transition: transform 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
+}
+
+/* いいね済み：ハートを赤く（PNGなのでfilterで色変え） */
+.likeButton.is-liked .likeButton__icon {
+  filter: brightness(0) saturate(100%) invert(33%) sepia(92%) saturate(4300%) hue-rotate(345deg) brightness(98%) contrast(110%);
+  transform: scale(1.08);
+}
+
+/* いいね済み：数字も赤っぽく（任意） */
+.likeButton.is-liked .likeButton__count {
+  color: #ff4d4f;
+  font-weight: 800;
+}
+
+/* hover（任意） */
+.likeButton:hover .likeButton__icon {
+  opacity: 0.85;
+}

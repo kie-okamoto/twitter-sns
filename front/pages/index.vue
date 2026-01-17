@@ -12,20 +12,23 @@
           <img src="/icons/home.png" alt="home" />
           <span>ホーム</span>
         </NuxtLink>
-        <button class="menu__item -button" @click="onLogout">
+
+        <button type="button" class="menu__item -button" @click="onLogout">
           <img src="/icons/logout.png" alt="logout" />
           <span>ログアウト</span>
         </button>
       </nav>
 
+      <!-- ✅ 左メニュー：シェア（投稿作成）は残す -->
       <div class="share">
         <p class="share__title">シェア</p>
-        <textarea
-          v-model="newPost"
-          class="share__input"
-          placeholder="いまどうしてる？"
-        />
-        <button class="btn" :disabled="posting" @click="createPost">
+        <textarea v-model="newPost" class="share__input" placeholder="" />
+        <button
+          type="button"
+          class="btn"
+          :disabled="posting || !newPost.trim()"
+          @click="createPost"
+        >
           シェアする
         </button>
       </div>
@@ -33,20 +36,31 @@
 
     <!-- ========== メイン ========== -->
     <main class="main">
-      <header class="main__header">コメント</header>
+      <div class="homeTitle">ホーム</div>
 
       <section v-for="p in posts" :key="p.id" class="post">
-        <!-- 投稿の1行目（タイトル行） -->
         <div class="post__head">
-          <strong class="post__user">{{ p.user?.name ?? 'user' }}</strong>
+          <strong class="post__user">
+            {{ displayPostUserName(p) }}
+          </strong>
 
-          <button class="icon" @click="toggleLike(p)">
-            <img src="/icons/heart.png" alt="like" />
-            <span>{{ p.likes_count ?? 0 }}</span>
+          <!-- ✅ いいね -->
+          <button
+            type="button"
+            class="icon likeButton"
+            :class="{ 'is-liked': !!p.is_liked }"
+            @click="toggleLike(p)"
+            aria-label="like"
+            title="いいね"
+          >
+            <img class="likeButton__icon" src="/icons/heart.png" alt="like" />
+            <span class="likeButton__count">{{ p.likes_count ?? 0 }}</span>
           </button>
 
+          <!-- ✅ 削除（自分のみ） -->
           <button
             v-if="canDelete(p)"
+            type="button"
             class="icon"
             title="削除"
             @click="removePost(p)"
@@ -54,97 +68,124 @@
             <img src="/icons/cross.png" alt="delete" />
           </button>
 
-          <button class="icon" title="シェア">
-            <img src="/icons/feather.png" alt="share" />
-          </button>
+          <!-- ✅ コメント画面へ遷移（detail） -->
+          <NuxtLink
+            class="icon"
+            :to="`/posts/${p.id}`"
+            title="コメントを見る"
+            aria-label="comments"
+          >
+            <img src="/icons/detail.png" alt="detail" />
+          </NuxtLink>
         </div>
 
-        <!-- 本文 -->
+        <!-- ✅ index では投稿本文のみ表示（コメントは出さない） -->
         <div class="post__body">{{ p.content }}</div>
-
-        <!-- コメント一覧テーブル風ヘッダ -->
-        <div class="post__commentsHead">コメント</div>
-
-        <!-- コメント一覧 -->
-        <ul class="post__comments">
-          <li v-for="c in p.comments ?? []" :key="c.id" class="comment">
-            <div class="comment__user">{{ c.user?.name ?? c.user_name ?? 'user' }}</div>
-            <div class="comment__body">{{ c.content }}</div>
-          </li>
-        </ul>
-
-        <!-- コメント入力 -->
-        <div class="commentForm">
-          <input
-            v-model="commentDraft[p.id]"
-            class="commentForm__input"
-            type="text"
-            placeholder="コメントを入力"
-          />
-            <button class="btn -right" @click="addComment(p)">コメント</button>
-        </div>
       </section>
 
-      <!-- 何も無いとき -->
-      <p v-if="!loading && posts.length === 0" class="empty">投稿はまだありません</p>
+      <p v-if="!loading && posts.length === 0" class="empty">
+        投稿はまだありません
+      </p>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'default', ssr: false })
+/** ✅ indexは feed レイアウト */
+definePageMeta({ layout: 'feed', ssr: false })
 
 import { getAuth } from 'firebase/auth'
 
 type User = { id: number; name: string }
-type Comment = { id: number; content: string; user?: User; user_name?: string }
+
 type Post = {
   id: number
   content: string
   user?: User
+  user_name?: string
+  user_id?: string
   likes_count?: number
   is_liked?: boolean
-  comments?: Comment[]
+  // ✅ indexではコメントを表示しないので保持しない
 }
 
-const { requireAuth, user, logout } = useAuth()
-const { public: { apiBase } } = useRuntimeConfig()
+const { requireAuth, logout } = useAuth()
+const {
+  public: { apiBase },
+} = useRuntimeConfig()
 
 const loading = ref(true)
 const posting = ref(false)
 const posts = ref<Post[]>([])
 const newPost = ref('')
-const commentDraft = reactive<Record<number, string>>({})
 
-// Firebase ID トークンを付けた fetch ラッパー
-const authedFetch = async <T = any>(
-  path: string,
-  opts: any = {}
-): Promise<T> => {
+/** ✅ 投稿作成用の表示名（ここは currentUserName を使ってOK） */
+const currentUserName = computed(() => {
+  const auth = getAuth()
+  return (
+    auth.currentUser?.displayName ||
+    (process.client ? localStorage.getItem('sns_user_name') : null) ||
+    'user'
+  )
+})
+
+const currentUid = computed(() => {
+  const auth = getAuth()
+  return auth.currentUser?.uid ?? null
+})
+
+const authedFetch = async <T = any>(path: string, opts: any = {}): Promise<T> => {
   const auth = getAuth()
   const token = await auth.currentUser?.getIdToken().catch(() => undefined)
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...(opts.headers || {})
+    ...(opts.headers || {}),
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
   return await $fetch<T>(`${apiBase}${path}`, { ...opts, headers })
 }
 
-// 初期ロード（認証→一覧）
+/**
+ * ✅ 投稿者名表示（重要）
+ * - currentUserName を fallback にしない（他人投稿が自分の名前になる事故防止）
+ * - user_name が無い投稿は 'user' と表示
+ */
+const displayPostUserName = (p: Post) => {
+  return p.user_name ?? p.user?.name ?? 'user'
+}
+
 onMounted(async () => {
   await requireAuth()
+
+  const auth = getAuth()
+  try {
+    await auth.currentUser?.reload()
+  } catch (_) {}
+
+  if (process.client && auth.currentUser?.displayName) {
+    localStorage.setItem('sns_user_name', auth.currentUser.displayName)
+  }
+
   await loadPosts()
 })
 
-/** 一覧取得 */
 const loadPosts = async () => {
   loading.value = true
   try {
     const res = await authedFetch<any>('/posts')
-    posts.value = Array.isArray(res) ? res : (res.data ?? [])
+    const raw = Array.isArray(res) ? res : (res?.data ?? [])
+
+    // ✅ indexではコメントを表示しないので、comments は拾わない
+    posts.value = raw.map((p: any) => ({
+      id: p.id,
+      content: p.content,
+      user_id: p.user_id,
+      user_name: p.user_name,
+      likes_count: p.likes_count ?? 0,
+      is_liked: p.is_liked ?? false,
+    }))
   } catch (e) {
     console.error('GET /posts failed', e)
   } finally {
@@ -152,35 +193,26 @@ const loadPosts = async () => {
   }
 }
 
-/** 投稿作成 */
 const createPost = async () => {
   const content = newPost.value.trim()
   if (!content) return
+
   posting.value = true
   try {
     await authedFetch('/posts', {
       method: 'POST',
-      body: { content },
+      body: { content, user_name: currentUserName.value },
     })
     newPost.value = ''
     await loadPosts()
-  } catch (e: any) {
-    console.error('POST /posts failed', {
-      status: e?.response?.status,
-      statusText: e?.response?.statusText,
-      data: e?.response?._data
-    })
-    alert(
-      `投稿に失敗しました\n` +
-      `status=${e?.response?.status}\n` +
-      `${JSON.stringify(e?.response?._data)}`
-    )
+  } catch (e) {
+    console.error('POST /posts failed', e)
+    alert('投稿に失敗しました。')
   } finally {
     posting.value = false
   }
 }
 
-/** いいね（トグル） */
 const toggleLike = async (p: Post) => {
   try {
     if (p.is_liked) {
@@ -197,156 +229,24 @@ const toggleLike = async (p: Post) => {
   }
 }
 
-/** 削除権限（必要なら調整） */
 const canDelete = (p: Post) => {
-  return true
+  const uid = currentUid.value
+  if (!uid) return false
+  return p.user_id === uid
 }
 
-/** 投稿削除 */
 const removePost = async (p: Post) => {
   if (!confirm('削除しますか？')) return
   try {
     await authedFetch(`/posts/${p.id}`, { method: 'DELETE' })
-    posts.value = posts.value.filter(x => x.id !== p.id)
+    posts.value = posts.value.filter((x) => x.id !== p.id)
   } catch (e) {
     console.error('DELETE /posts failed', e)
+    alert('削除に失敗しました。')
   }
 }
 
-/** コメント追加 */
-const addComment = async (p: Post) => {
-  const content = (commentDraft[p.id] ?? '').trim()
-  if (!content) return
-
-  try {
-    await authedFetch('/comments', {
-      method: 'POST',
-      body: {
-        post_id: p.id,   // ★ どの投稿へのコメントか
-        content,         // ★ コメント本文
-      },
-    })
-
-    commentDraft[p.id] = ''
-    await loadPosts()
-  } catch (e: any) {
-    console.error('POST /comments failed', {
-      status: e?.response?.status,
-      data: e?.response?._data,
-    })
-    alert(
-      `コメント投稿に失敗しました\n` +
-      `status=${e?.response?.status}\n` +
-      `${JSON.stringify(e?.response?._data)}`
-    )
-  }
-}
-
-
-/** ログアウト */
 const onLogout = async () => {
   await logout()
 }
 </script>
-
-<style scoped>
-/* ===== レイアウト ===== */
-.feed{
-  display:grid;
-  grid-template-columns: 260px 1fr;
-  min-height: calc(100vh - 64px); /* ヘッダ分差し引き */
-  background:#0f1824;
-  color:#fff;
-}
-
-/* ===== サイド ===== */
-.aside{
-  border-right: 2px solid rgba(255,255,255,.06);
-  padding: 18px 16px 24px;
-  display:flex;
-  flex-direction:column;
-  gap: 18px;
-}
-.brand img{ width: 130px; height:auto; display:block; }
-
-.menu{ display:flex; flex-direction:column; gap:10px; }
-.menu__item{
-  display:flex; align-items:center; gap:10px;
-  color:#fff; text-decoration:none;
-  padding:10px 8px; border-radius:10px;
-}
-.menu__item img{ width:22px; height:22px; }
-.menu__item:hover{ background:rgba(255,255,255,.06); }
-.menu__item.-button{ background:none; border:none; cursor:pointer; text-align:left; }
-
-.share{ margin-top:6px; }
-.share__title{ margin:0 0 8px; }
-.share__input{
-  width:100%; height:140px; resize:none;
-  background:#162231; color:#fff;
-  border:1px solid #8a8f98; border-radius:10px;
-  padding:10px 12px; outline:none;
-}
-.btn{
-  margin-top:12px;
-  padding:10px 18px; border:0; border-radius:22px;
-  background: linear-gradient(90deg,#6a11cb 0%,#2575fc 100%);
-  color:#fff; font-weight:700; cursor:pointer;
-}
-.btn:disabled{ opacity:.6; cursor:default; }
-.btn.-right{ float:right; }
-
-/* ===== メイン ===== */
-.main{ padding: 12px 18px 40px; }
-.main__header{
-  font-size:22px; font-weight:700;
-  border-bottom:1px solid rgba(255,255,255,.25);
-  padding: 8px 6px 10px; margin-bottom:10px;
-}
-
-.post{
-  background:#121c29; border:1px solid rgba(255,255,255,.15);
-  border-radius:8px; margin-bottom:12px;
-}
-
-/* 上段（ユーザー名＋操作） */
-.post__head{
-  display:flex; align-items:center; gap:14px;
-  padding:12px 10px 8px; border-bottom:1px solid rgba(255,255,255,.12);
-}
-.post__user{ font-size:18px; }
-.icon{
-  display:inline-flex; align-items:center; gap:6px;
-  background:none; border:0; cursor:pointer; color:#fff;
-  padding:4px 6px; border-radius:6px;
-}
-.icon:hover{ background:rgba(255,255,255,.06); }
-.icon img{ width:20px; height:20px; }
-
-/* 本文 */
-.post__body{ padding:8px 10px 12px; }
-
-/* コメントヘッダ */
-.post__commentsHead{
-  border-top:1px solid rgba(255,255,255,.12);
-  border-bottom:1px solid rgba(255,255,255,.12);
-  padding:8px 10px; text-align:center; opacity:.9;
-}
-
-/* コメント一覧 */
-.post__comments{ list-style:none; margin:0; padding:8px 10px 10px; display:flex; flex-direction:column; gap:6px; }
-.comment{ display:grid; grid-template-columns: 200px 1fr; column-gap: 12px; }
-.comment__user{ opacity:.95; }
-.comment__body{ background:transparent; border:0; color:#fff; }
-
-/* コメント入力 */
-.commentForm{ display:flex; align-items:center; gap:10px; padding: 8px 10px 14px; }
-.commentForm__input{
-  flex:1 1 auto; padding:10px 12px;
-  border:1px solid #8a8f98; border-radius:10px; outline:none;
-  background:transparent; color:#fff;
-}
-
-/* 空表示 */
-.empty{ opacity:.8; padding: 16px 8px; }
-</style>

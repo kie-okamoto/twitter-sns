@@ -3,43 +3,63 @@
 namespace App\Http\Controllers;
 
 use App\Models\Like;
-use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class LikeController extends Controller
 {
     /**
-     * いいねトグル（追加・削除両対応）
-     * フロント：POST /posts/{post}/likes
+     * いいね追加
+     * POST /likes  body: { post_id }
      */
-    public function toggle(Request $request, Post $post)
+    public function store(Request $request)
     {
         $uid = $request->attributes->get('firebase_uid');
         if (!$uid) {
             return response()->json(['message' => 'Unauthenticated'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // 既にいいねしているか確認
-        $existing = Like::where('post_id', $post->id)
-            ->where('user_id', $uid)
-            ->first();
+        $data = $request->validate([
+            'post_id' => ['required', 'integer'],
+        ]);
 
-        if ($existing) {
-            $existing->delete();
-            $liked = false;
-        } else {
-            Like::create([
-                'post_id' => $post->id,
-                'user_id' => $uid,
-            ]);
-            $liked = true;
-        }
+        // ✅ 二重いいね防止（DBにも unique 推奨）
+        Like::firstOrCreate([
+            'user_id' => $uid,
+            'post_id' => $data['post_id'],
+        ]);
 
-        $count = Like::where('post_id', $post->id)->count();
+        $count = Like::where('post_id', $data['post_id'])->count();
 
         return response()->json([
-            'liked' => $liked,
+            'liked' => true,
+            'likes_count' => $count,
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * いいね削除
+     * DELETE /likes body: { post_id }
+     */
+    public function destroy(Request $request)
+    {
+        $uid = $request->attributes->get('firebase_uid');
+        if (!$uid) {
+            return response()->json(['message' => 'Unauthenticated'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $data = $request->validate([
+            'post_id' => ['required', 'integer'],
+        ]);
+
+        Like::where('user_id', $uid)
+            ->where('post_id', $data['post_id'])
+            ->delete();
+
+        $count = Like::where('post_id', $data['post_id'])->count();
+
+        return response()->json([
+            'liked' => false,
             'likes_count' => $count,
         ], Response::HTTP_OK);
     }

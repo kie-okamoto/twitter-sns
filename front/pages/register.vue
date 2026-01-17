@@ -1,33 +1,42 @@
-<!-- /pages/register.vue -->
+<!-- /home/y1109/twitter-sns/front/pages/register.vue -->
 <template>
   <div class="auth-page">
     <form class="auth-form" @submit.prevent="onSubmit">
       <h2>新規登録</h2>
 
       <input
-        v-model="username"
+        v-model.trim="username"
         type="text"
-        placeholder="ユーザー ネーム"
+        placeholder="ユーザーネーム"
         required
+        maxlength="20"
         autocomplete="nickname"
       />
+
       <input
-        v-model="email"
+        v-model.trim="email"
         type="email"
         placeholder="メールアドレス"
         required
         autocomplete="email"
       />
+
       <input
         v-model="password"
         type="password"
-        placeholder="パスワード"
+        placeholder="パスワード（6文字以上）"
         required
         minlength="6"
         autocomplete="new-password"
       />
 
-      <button type="submit" class="primary">新規登録</button>
+      <p v-if="errorMessage" class="error">
+        {{ errorMessage }}
+      </p>
+
+      <button type="submit" class="primary" :disabled="loading">
+        {{ loading ? '登録中...' : '新規登録' }}
+      </button>
     </form>
   </div>
 </template>
@@ -35,75 +44,104 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default', ssr: false })
 
+import { getAuth, updateProfile } from 'firebase/auth'
+
 const { register } = useAuth()
+
 const username = ref('')
 const email = ref('')
 const password = ref('')
 
-// ユーザー名を Firebase の displayName に反映（任意）
-import { getAuth, updateProfile } from 'firebase/auth'
-const auth = getAuth()
+const loading = ref(false)
+const errorMessage = ref('')
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** Firebaseのエラーコードをユーザー向け文言に変換 */
+const toUserMessage = (code?: string) => {
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'このメールアドレスは既に登録されています。'
+    case 'auth/invalid-email':
+      return 'メールアドレスの形式が正しくありません。'
+    case 'auth/weak-password':
+      return 'パスワードが弱すぎます。6文字以上で設定してください。'
+    case 'auth/missing-password':
+      return 'パスワードを入力してください。'
+    case 'auth/missing-email':
+      return 'メールアドレスを入力してください。'
+    default:
+      return '新規登録に失敗しました。入力内容をご確認ください。'
+  }
+}
 
 const onSubmit = async () => {
-  await register(email.value, password.value)
-  if (auth.currentUser && username.value.trim()) {
-    try {
-      await updateProfile(auth.currentUser, { displayName: username.value.trim() })
-    } catch (e) {
-      console.warn('[Auth] updateProfile failed:', e)
-    }
+  errorMessage.value = ''
+
+  const name = username.value.trim()
+  const mail = email.value.trim()
+  const pass = password.value
+
+  // ===== フロント側バリデーション（要件） =====
+  if (!name) {
+    errorMessage.value = 'ユーザーネームを入力してください。'
+    return
   }
-  await navigateTo('/')
+  if (name.length > 20) {
+    errorMessage.value = 'ユーザーネームは20文字以内で入力してください。'
+    return
+  }
+  if (!mail) {
+    errorMessage.value = 'メールアドレスを入力してください。'
+    return
+  }
+  if (!pass) {
+    errorMessage.value = 'パスワードを入力してください。'
+    return
+  }
+  if (pass.length < 6) {
+    errorMessage.value = 'パスワードは6文字以上で入力してください。'
+    return
+  }
+
+  loading.value = true
+
+  try {
+    // デバッグログ（安全版：中身は出さない）
+    console.log('username=', name)
+    console.log('email=', mail)
+    console.log('password length=', pass?.length)
+
+    // 1) Firebase Auth 登録
+    await register(mail, pass)
+
+    // 2) currentUserが入るまで少し待つ（環境によって遅延するため）
+    const auth = getAuth()
+    for (let i = 0; i < 10; i++) {
+      if (auth.currentUser) break
+      await sleep(100)
+    }
+
+    // 3) displayName を保存
+    if (auth.currentUser) {
+      await updateProfile(auth.currentUser, { displayName: name })
+      await auth.currentUser.reload()
+    }
+
+    // 4) 保険：localStorage にも保存（表示名が取れない場合のフォールバック用）
+    if (process.client) {
+      localStorage.setItem('sns_user_name', name)
+    }
+
+    await navigateTo('/')
+  } catch (e: any) {
+    // ✅ 開発者向け：コンソールには詳細
+    console.error('[Register Error]', e)
+
+    // ✅ ユーザー向け：短く分かりやすく
+    errorMessage.value = toUserMessage(e?.code)
+  } finally {
+    loading.value = false
+  }
 }
 </script>
-
-<style scoped>
-/* 画面全体（添付デザインのダーク背景） */
-.auth-page{
-  min-height:calc(100vh - 64px); /* ヘッダー分を除外 */
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  background:#0f1824;
-}
-
-/* 白いカードフォーム */
-.auth-form{
-  width:520px;
-  background:#fff;
-  color:#000;
-  padding:28px 36px;
-  border-radius:12px;
-  box-shadow:0 6px 18px rgba(0,0,0,.22);
-  display:flex;
-  flex-direction:column;
-  gap:14px;
-}
-
-.auth-form h2{
-  text-align:center;
-  margin:0 0 8px;
-}
-
-/* 入力フィールド */
-.auth-form input{
-  padding:12px 14px;
-  border:1px solid #8a8f98;
-  border-radius:10px;
-  outline:none;
-}
-
-/* 送信ボタン（紫グラデ・丸ボタン） */
-.primary{
-  align-self:center;
-  margin-top:6px;
-  padding:10px 22px;
-  border:0;
-  border-radius:22px;
-  background:linear-gradient(90deg,#6a11cb 0%,#2575fc 100%);
-  color:#fff;
-  font-weight:700;
-  cursor:pointer;
-}
-.primary:hover{ opacity:.92; }
-</style>
