@@ -1,7 +1,6 @@
 <!-- /home/y1109/twitter-sns/front/pages/index.vue -->
 <template>
   <div class="feed">
-    <!-- ========== 左サイドバー ========== -->
     <aside class="aside">
       <div class="brand">
         <img src="/images/logo.png" alt="SHARE" />
@@ -19,32 +18,30 @@
         </button>
       </nav>
 
-      <!-- ✅ 左メニュー：シェア（投稿作成）は残す -->
       <div class="share">
         <p class="share__title">シェア</p>
-        <textarea v-model="newPost" class="share__input" placeholder="" />
-        <button
-          type="button"
-          class="btn"
-          :disabled="posting || !newPost.trim()"
-          @click="createPost"
-        >
-          シェアする
-        </button>
+
+        <form class="share__form" novalidate @submit.prevent="onCreatePost">
+          <textarea v-model="newPost" class="share__input" placeholder="" />
+
+          <p v-if="postSubmitCount > 0 && postErrors.content" class="error">
+            {{ postErrors.content }}
+          </p>
+
+          <button type="submit" class="btn share__btn" :disabled="posting || postIsSubmitting">
+            シェアする
+          </button>
+        </form>
       </div>
     </aside>
 
-    <!-- ========== メイン ========== -->
     <main class="main">
       <div class="homeTitle">ホーム</div>
 
       <section v-for="p in posts" :key="p.id" class="post">
         <div class="post__head">
-          <strong class="post__user">
-            {{ displayPostUserName(p) }}
-          </strong>
+          <strong class="post__user">{{ displayPostUserName(p) }}</strong>
 
-          <!-- ✅ いいね -->
           <button
             type="button"
             class="icon likeButton"
@@ -57,7 +54,6 @@
             <span class="likeButton__count">{{ p.likes_count ?? 0 }}</span>
           </button>
 
-          <!-- ✅ 削除（自分のみ） -->
           <button
             v-if="canDelete(p)"
             type="button"
@@ -68,45 +64,33 @@
             <img src="/icons/cross.png" alt="delete" />
           </button>
 
-          <!-- ✅ コメント画面へ遷移（detail） -->
-          <NuxtLink
-            class="icon"
-            :to="`/posts/${p.id}`"
-            title="コメントを見る"
-            aria-label="comments"
-          >
+          <NuxtLink class="icon" :to="`/posts/${p.id}`" title="コメントを見る" aria-label="comments">
             <img src="/icons/detail.png" alt="detail" />
           </NuxtLink>
         </div>
 
-        <!-- ✅ index では投稿本文のみ表示（コメントは出さない） -->
         <div class="post__body">{{ p.content }}</div>
       </section>
 
-      <p v-if="!loading && posts.length === 0" class="empty">
-        投稿はまだありません
-      </p>
+      <p v-if="!loading && posts.length === 0" class="empty">投稿はまだありません</p>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-/** ✅ indexは feed レイアウト */
 definePageMeta({ layout: 'feed', ssr: false })
 
-import { getAuth } from 'firebase/auth'
-
-type User = { id: number; name: string }
+import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { useForm } from 'vee-validate'
+import * as yup from 'yup'
 
 type Post = {
   id: number
   content: string
-  user?: User
-  user_name?: string
-  user_id?: string
+  user_name?: string | null
+  user_id?: string | null
   likes_count?: number
   is_liked?: boolean
-  // ✅ indexではコメントを表示しないので保持しない
 }
 
 const { requireAuth, logout } = useAuth()
@@ -117,26 +101,59 @@ const {
 const loading = ref(true)
 const posting = ref(false)
 const posts = ref<Post[]>([])
-const newPost = ref('')
 
-/** ✅ 投稿作成用の表示名（ここは currentUserName を使ってOK） */
-const currentUserName = computed(() => {
-  const auth = getAuth()
-  return (
-    auth.currentUser?.displayName ||
-    (process.client ? localStorage.getItem('sns_user_name') : null) ||
-    'user'
-  )
+// ===== 投稿フォーム =====
+const postSchema = yup.object({
+  content: yup
+    .string()
+    .transform((v) => (typeof v === 'string' ? v.trim() : v))
+    .required('投稿内容を入力してください。')
+    .max(120, '投稿内容は120文字以内で入力してください。'),
 })
 
-const currentUid = computed(() => {
-  const auth = getAuth()
-  return auth.currentUser?.uid ?? null
+const {
+  errors: postErrors,
+  handleSubmit: handlePostSubmit,
+  defineField: definePostField,
+  isSubmitting: postIsSubmitting,
+  submitCount: postSubmitCount,
+  resetForm,
+} = useForm({
+  validationSchema: postSchema,
+  validateOnBlur: false,
+  validateOnChange: false,
+  validateOnInput: false,
+  validateOnModelUpdate: false,
 })
 
-const authedFetch = async <T = any>(path: string, opts: any = {}): Promise<T> => {
+const [newPost] = definePostField('content')
+
+// ===== token取得 =====
+const getIdTokenOrNull = async (): Promise<string | null> => {
   const auth = getAuth()
-  const token = await auth.currentUser?.getIdToken().catch(() => undefined)
+  const user =
+    auth.currentUser ??
+    (await new Promise<ReturnType<typeof auth.currentUser>>((resolve) => {
+      const unsub = onAuthStateChanged(auth, (u) => {
+        unsub()
+        resolve(u)
+      })
+    }))
+  if (!user) return null
+  try {
+    return await user.getIdToken(true)
+  } catch {
+    return null
+  }
+}
+
+const authedFetch = async <T = any>(
+  path: string,
+  opts: any = {},
+  cfg: { required?: boolean } = {}
+): Promise<T> => {
+  const token = await getIdTokenOrNull()
+  if (cfg.required && !token) throw new Error('NO_TOKEN')
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -147,14 +164,9 @@ const authedFetch = async <T = any>(path: string, opts: any = {}): Promise<T> =>
   return await $fetch<T>(`${apiBase}${path}`, { ...opts, headers })
 }
 
-/**
- * ✅ 投稿者名表示（重要）
- * - currentUserName を fallback にしない（他人投稿が自分の名前になる事故防止）
- * - user_name が無い投稿は 'user' と表示
- */
-const displayPostUserName = (p: Post) => {
-  return p.user_name ?? p.user?.name ?? 'user'
-}
+const currentUid = computed(() => getAuth().currentUser?.uid ?? null)
+
+const displayPostUserName = (p: Post) => p.user_name ?? 'user'
 
 onMounted(async () => {
   await requireAuth()
@@ -164,10 +176,6 @@ onMounted(async () => {
     await auth.currentUser?.reload()
   } catch (_) {}
 
-  if (process.client && auth.currentUser?.displayName) {
-    localStorage.setItem('sns_user_name', auth.currentUser.displayName)
-  }
-
   await loadPosts()
 })
 
@@ -175,9 +183,7 @@ const loadPosts = async () => {
   loading.value = true
   try {
     const res = await authedFetch<any>('/posts')
-    const raw = Array.isArray(res) ? res : (res?.data ?? [])
-
-    // ✅ indexではコメントを表示しないので、comments は拾わない
+    const raw = Array.isArray(res) ? res : res?.data ?? []
     posts.value = raw.map((p: any) => ({
       id: p.id,
       content: p.content,
@@ -193,39 +199,39 @@ const loadPosts = async () => {
   }
 }
 
-const createPost = async () => {
-  const content = newPost.value.trim()
-  if (!content) return
-
+const onCreatePost = handlePostSubmit(async (values) => {
+  if (posting.value) return
   posting.value = true
   try {
-    await authedFetch('/posts', {
-      method: 'POST',
-      body: { content, user_name: currentUserName.value },
-    })
-    newPost.value = ''
+    await authedFetch(
+      '/posts',
+      { method: 'POST', body: { content: values.content } },
+      { required: true }
+    )
+    resetForm({ values: { content: '' } })
     await loadPosts()
-  } catch (e) {
+  } catch (e: any) {
     console.error('POST /posts failed', e)
-    alert('投稿に失敗しました。')
+    alert(String(e?.message) === 'NO_TOKEN' ? '再ログインしてください。' : '投稿に失敗しました。')
   } finally {
     posting.value = false
   }
-}
+})
 
 const toggleLike = async (p: Post) => {
   try {
     if (p.is_liked) {
-      await authedFetch('/likes', { method: 'DELETE', body: { post_id: p.id } })
+      await authedFetch(`/likes/${p.id}`, { method: 'DELETE' }, { required: true })
       p.is_liked = false
       p.likes_count = Math.max(0, (p.likes_count ?? 0) - 1)
     } else {
-      await authedFetch('/likes', { method: 'POST', body: { post_id: p.id } })
+      await authedFetch('/likes', { method: 'POST', body: { post_id: p.id } }, { required: true })
       p.is_liked = true
       p.likes_count = (p.likes_count ?? 0) + 1
     }
   } catch (e) {
     console.error('toggle like failed', e)
+    alert('いいねに失敗しました。再ログインしてください。')
   }
 }
 
@@ -238,7 +244,7 @@ const canDelete = (p: Post) => {
 const removePost = async (p: Post) => {
   if (!confirm('削除しますか？')) return
   try {
-    await authedFetch(`/posts/${p.id}`, { method: 'DELETE' })
+    await authedFetch(`/posts/${p.id}`, { method: 'DELETE' }, { required: true })
     posts.value = posts.value.filter((x) => x.id !== p.id)
   } catch (e) {
     console.error('DELETE /posts failed', e)

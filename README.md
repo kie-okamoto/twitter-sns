@@ -3,11 +3,7 @@
 Firebase認証とLaravel APIを組み合わせた、  
 **投稿・いいね・コメント機能を備えた Twitter風SNSアプリ**です。
 
-フロントエンドは **Nuxt 3**、バックエンドは **Laravel** を使用し、  
-API連携によるSPA構成で実装しています。
-
-<!-- トップ画面のスクリーンショットを後で追加 -->
-<!-- ![トップ画面](docs/images/top.png) -->
+![トップ画面（投稿一覧）](docs/images/top.png)
 
 ---
 
@@ -23,7 +19,6 @@ API連携によるSPA構成で実装しています。
 ## アプリケーションURL
 
 ※ 現在は **ローカル環境での開発のみ**  
-（デプロイ後にURLを追記予定）
 
 ### ローカルURL
 - Front（Nuxt）：`http://localhost:3000`
@@ -64,16 +59,13 @@ API連携によるSPA構成で実装しています。
 ## 使用技術（実行環境）
 
 ### フロントエンド
-- Node.js
-- Nuxt 3
+- JavaScript（Nuxt 3）
 - TypeScript
-- VeeValidate
-- Yup
-- Firebase Authentication
+- VeeValidate / Yup（バリデーション）
+- Firebase Authentication（認証）
 
 ### バックエンド
-- PHP 8.x
-- Laravel
+- PHP（Laravel）
 - Laravel API
 - Firebase ID Token 認証
 
@@ -84,18 +76,28 @@ API連携によるSPA構成で実装しています。
 ---
 
 ## テーブル設計
+本アプリでは、Firebase Authentication を用いた認証を前提とし、
+**ユーザー情報は最小限のみDBに保持**する構成としています。
 
-※ 開発用APIのため、最小構成で実装
+投稿・いいね・コメント機能を実現するため、
+以下の4テーブルで設計しています。
 
-<!-- 後で画像を追加 -->
-<!-- ![テーブル設計](docs/images/table.png) -->
+### テーブル概要
+
+| テーブル名 | 説明 |
+|-----------|------|
+| users     | Firebase UID を基準にしたユーザー情報（表示名・メール） |
+| posts     | 投稿データ（本文・投稿者・表示名スナップショット） |
+| likes     | 投稿へのいいね情報（post × user の中間テーブル） |
+| comments  | 投稿へのコメント情報 |
+
+※ 投稿・コメントの表示名は、投稿時点の表示名を保持するため  
+`user_name` をスナップショットとして保存しています。
 
 ---
 
 ## ER図
-
-<!-- 後で画像を追加 -->
-<!-- ![ER図](docs/images/er.png) -->
+![ER Diagram](docs/er/er_diagram.png)
 
 ---
 

@@ -3,16 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Post extends Model
 {
     protected $fillable = [
-        'user_id',     // Firebase UID（文字列）
+        'user_id',     // Firebase UID
         'content',
-        'image_path',
-        'user_name',
+        'user_name',   // 表示名スナップショット
     ];
+
+    public function user(): BelongsTo
+    {
+        // posts.user_id (Firebase UID) -> users.firebase_uid
+        return $this->belongsTo(User::class, 'user_id', 'firebase_uid');
+    }
 
     public function likes(): HasMany
     {

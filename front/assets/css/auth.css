@@ -1,22 +1,25 @@
 /* /home/y1109/twitter-sns/front/assets/css/auth.css */
 
+/* ===============================
+   Auth Pages (login/register)
+   =============================== */
+
 /* 画面全体（ダーク背景） */
 .auth-page {
   min-height: calc(100vh - 64px);
-  /* ヘッダーが64px想定 */
+  /* ヘッダーがあるlayout用 */
   display: flex;
   justify-content: center;
   align-items: center;
   background: #0f1824;
   padding: 24px 16px;
+  box-sizing: border-box;
 }
 
 /* 白いカード */
 .auth-form {
   width: 720px;
-  /* 画像の横長カード感 */
   max-width: 92vw;
-  /* 画面が狭い時に潰れない */
   background: #fff;
   color: #111;
   border-radius: 12px;
@@ -25,6 +28,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-sizing: border-box;
 }
 
 /* タイトル */
@@ -43,6 +47,7 @@
   border-radius: 10px;
   outline: none;
   font-size: 16px;
+  box-sizing: border-box;
 }
 
 /* フォーカス時 */
@@ -51,16 +56,16 @@
   box-shadow: 0 0 0 3px rgba(106, 17, 203, 0.15);
 }
 
-/* エラーメッセージ（login/register共通で使う） */
-.error {
+/* ✅ エラーメッセージ（auth専用に分離） */
+.auth-error {
   margin: 0;
   font-size: 14px;
   color: #d11a2a;
   text-align: center;
 }
 
-/* 送信ボタン（紫グラデ＋丸ボタン） */
-.primary {
+/* 送信ボタン（auth専用） */
+.auth-primary {
   align-self: center;
   margin-top: 8px;
   height: 44px;
@@ -73,19 +78,20 @@
   font-size: 16px;
   cursor: pointer;
   box-shadow: 0 6px 14px rgba(37, 117, 252, 0.25);
+  white-space: nowrap;
 }
 
-.primary:hover {
+.auth-primary:hover {
   opacity: 0.92;
 }
 
-.primary:disabled {
+.auth-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
 }
 
-/* 下のリンク（ログインへ/新規登録へ） */
+/* 下のリンク */
 .link {
   text-align: center;
   margin-top: 4px;
@@ -98,4 +104,40 @@
 
 .link a:hover {
   text-decoration: underline;
+}
+
+/* ===============================
+   Responsive
+   =============================== */
+
+/* Tablet */
+@media (max-width: 1023px) {
+  .auth-page {
+    min-height: calc(100vh - 56px);
+    /* ヘッダーが少し低い場合も想定 */
+  }
+
+  .auth-form {
+    width: 640px;
+    padding: 28px 28px;
+  }
+}
+
+/* SP */
+@media (max-width: 767px) {
+  .auth-form {
+    width: 100%;
+    max-width: 100%;
+    padding: 22px 18px;
+    border-radius: 12px;
+  }
+
+  .auth-form h2 {
+    font-size: 20px;
+  }
+
+  .auth-form input {
+    height: 46px;
+    font-size: 16px;
+  }
 }

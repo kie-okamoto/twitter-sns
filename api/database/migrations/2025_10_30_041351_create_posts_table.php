@@ -9,10 +9,25 @@ return new class extends Migration {
     {
         Schema::create('posts', function (Blueprint $table) {
             $table->id();
-            $table->string('user_id'); // Firebase UIDを保持
+
+            // users.firebase_uid と完全一致させる（型・長さ）
+            $table->string('user_id', 255)->comment('Firebase UID');
+
+            // 表示名スナップショット（未設定ユーザーもいるので nullable）
+            $table->string('user_name', 255)->nullable()->comment('display name snapshot');
+
+            // メッセージ本文
             $table->text('content');
-            $table->string('image_path')->nullable(); // 画像投稿用
+
             $table->timestamps();
+
+            // FK（文字列）
+            $table->foreign('user_id')
+                ->references('firebase_uid')->on('users')
+                ->cascadeOnDelete();
+
+            // 一覧や削除判定でよく使う
+            $table->index('user_id');
         });
     }
 

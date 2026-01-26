@@ -7,24 +7,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Like extends Model
 {
-    /**
-     * 一括代入可能なカラム
-     */
     protected $fillable = [
-        'post_id',   // 対象の投稿ID
-        'user_id',   // Firebase UID（文字列）
+        'post_id',
+        'user_id', // Firebase UID
     ];
 
-    /**
-     * タイムスタンプを使用（必要に応じて無効化も可）
-     */
     public $timestamps = true;
 
-    /**
-     * リレーション：この「いいね」が属する投稿
-     */
     public function post(): BelongsTo
     {
         return $this->belongsTo(Post::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        // likes.user_id (Firebase UID) -> users.firebase_uid
+        return $this->belongsTo(User::class, 'user_id', 'firebase_uid');
     }
 }

@@ -9,11 +9,28 @@ return new class extends Migration {
     {
         Schema::create('likes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('post_id')->constrained('posts')->onDelete('cascade');
-            $table->string('user_id'); // Firebase UID
+
+            // posts.id
+            $table->foreignId('post_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            // users.firebase_uid
+            $table->string('user_id', 255)->comment('Firebase UID');
+
             $table->timestamps();
 
-            $table->unique(['post_id', 'user_id']); // 同一ユーザーの重複いいね防止
+            // 同一ユーザーの重複いいね防止
+            $table->unique(['post_id', 'user_id']);
+
+            // マイいいね一覧等の検索用
+            $table->index('user_id');
+
+            // FK（文字列）
+            $table->foreign('user_id')
+                ->references('firebase_uid')
+                ->on('users')
+                ->cascadeOnDelete();
         });
     }
 

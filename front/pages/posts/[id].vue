@@ -1,7 +1,6 @@
 <!-- /home/y1109/twitter-sns/front/pages/posts/[id].vue -->
 <template>
   <div class="feed">
-    <!-- ========== 左サイドバー（index と同じ） ========== -->
     <aside class="aside">
       <div class="brand">
         <img src="/images/logo.png" alt="SHARE" />
@@ -18,67 +17,63 @@
           <span>ログアウト</span>
         </button>
       </nav>
-
-      <!-- ✅ コメント画面では投稿欄は不要（仕様に合わせて削除） -->
     </aside>
 
-    <!-- ========== メイン ========== -->
     <main class="main">
       <div class="homeTitle">コメント</div>
 
-      <!-- 投稿1件 -->
-      <section v-if="post" class="post">
-        <div class="post__head">
-          <strong class="post__user">
-            {{ post.user_name ?? 'user' }}
-          </strong>
-
-          <!-- いいね数（表示のみ） -->
-          <div class="icon" title="いいね数">
-            <img src="/icons/heart.png" alt="like" />
-            <span>{{ post.likes_count ?? 0 }}</span>
-          </div>
-
-          <!-- 戻る（ホームへ） -->
-          <NuxtLink to="/" class="icon" title="ホームに戻る" aria-label="back">
-            <img src="/icons/detail.png" alt="back" />
-          </NuxtLink>
-        </div>
-
-        <div class="post__body">{{ post.content }}</div>
-
-        <!-- コメント一覧 -->
-        <ul class="post__comments">
-          <li v-for="c in post.comments ?? []" :key="c.id" class="comment">
-            <div class="comment__user">{{ c.user_name ?? 'user' }}</div>
-            <div class="comment__body">{{ c.content }}</div>
-          </li>
-        </ul>
-
-        <!-- ✅ コメントフォーム（この画面だけ） -->
-        <div class="commentForm">
-          <input
-            v-model="comment"
-            class="commentForm__input"
-            type="text"
-            placeholder="コメントを入力"
-            @keydown.enter.prevent="submitComment"
-          />
-
-          <button
-            type="button"
-            class="btn -right"
-            :disabled="sending || !comment.trim()"
-            @click="submitComment"
-          >
-            コメント
-          </button>
-        </div>
-      </section>
-
-      <p v-else class="empty">
+      <p v-if="!post" class="empty">
         {{ loading ? '読み込み中...' : '投稿が見つかりません' }}
       </p>
+
+      <template v-else>
+        <section class="messageBox">
+          <div class="post__head">
+            <strong class="post__user">{{ post.user_name ?? 'user' }}</strong>
+
+            <div class="icon" title="いいね数">
+              <img src="/icons/heart.png" alt="like" />
+              <span>{{ post.likes_count ?? 0 }}</span>
+            </div>
+
+            <button v-if="canDelete(post)" type="button" class="icon" title="削除" @click="removePost(post)">
+              <img src="/icons/cross.png" alt="delete" />
+            </button>
+          </div>
+
+          <div class="post__body">{{ post.content }}</div>
+        </section>
+
+        <section class="commentBox">
+          <div class="commentBox__title">コメント</div>
+
+          <ul class="post__comments">
+            <li v-for="c in post.comments ?? []" :key="c.id" class="comment">
+              <div class="comment__user">{{ c.user_name ?? 'user' }}</div>
+              <div class="comment__body">{{ c.content }}</div>
+            </li>
+          </ul>
+
+          <form class="commentForm" novalidate @submit.prevent="onSubmitComment">
+            <input
+              v-model="comment"
+              class="commentForm__input"
+              type="text"
+              placeholder="コメントを入力"
+              :aria-invalid="commentSubmitCount > 0 && !!commentErrors.content"
+              @keydown.enter.prevent="onSubmitComment"
+            />
+
+            <button type="submit" class="btn commentForm__btn" :disabled="sending || commentIsSubmitting">
+              コメント
+            </button>
+          </form>
+
+          <p v-if="commentSubmitCount > 0 && commentErrors.content" class="feed-error">
+            {{ commentErrors.content }}
+          </p>
+        </section>
+      </template>
     </main>
   </div>
 </template>
@@ -86,19 +81,18 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'feed', ssr: false })
 
-import { getAuth } from 'firebase/auth'
+import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { useForm } from 'vee-validate'
+import * as yup from 'yup'
 
-type Comment = {
-  id: number
-  content: string
-  user_name?: string
-}
-
+type Comment = { id: number; content: string; user_name?: string | null }
 type Post = {
   id: number
   content: string
-  user_name?: string
+  user_id?: string | null
+  user_name?: string | null
   likes_count?: number
+  comments_count?: number
   comments?: Comment[]
 }
 
@@ -112,23 +106,60 @@ const {
 
 const loading = ref(true)
 const post = ref<Post | null>(null)
-
-const comment = ref('')
 const sending = ref(false)
 
-/** ✅ ログイン中ユーザー名（コメント投稿用） */
-const currentUserName = computed(() => {
-  const auth = getAuth()
-  return (
-    auth.currentUser?.displayName ||
-    (process.client ? localStorage.getItem('sns_user_name') : null) ||
-    'user'
-  )
+// ===== コメントフォーム =====
+const commentSchema = yup.object({
+  content: yup
+    .string()
+    .transform((v) => (typeof v === 'string' ? v.trim() : v))
+    .required('コメント内容を入力してください。')
+    .max(120, 'コメント内容は120文字以内で入力してください。'),
 })
 
-const authedFetch = async <T = any>(path: string, opts: any = {}): Promise<T> => {
+const {
+  errors: commentErrors,
+  handleSubmit: handleCommentSubmit,
+  defineField: defineCommentField,
+  isSubmitting: commentIsSubmitting,
+  submitCount: commentSubmitCount,
+  resetForm,
+} = useForm({
+  validationSchema: commentSchema,
+  validateOnBlur: false,
+  validateOnChange: false,
+  validateOnInput: false,
+  validateOnModelUpdate: false,
+})
+
+const [comment] = defineCommentField('content')
+
+// ===== token取得 =====
+const getIdTokenOrNull = async (): Promise<string | null> => {
   const auth = getAuth()
-  const token = await auth.currentUser?.getIdToken().catch(() => undefined)
+  const user =
+    auth.currentUser ??
+    (await new Promise<ReturnType<typeof auth.currentUser>>((resolve) => {
+      const unsub = onAuthStateChanged(auth, (u) => {
+        unsub()
+        resolve(u)
+      })
+    }))
+  if (!user) return null
+  try {
+    return await user.getIdToken(true)
+  } catch {
+    return null
+  }
+}
+
+const authedFetch = async <T = any>(
+  path: string,
+  opts: any = {},
+  cfg: { required?: boolean } = {}
+): Promise<T> => {
+  const token = await getIdTokenOrNull()
+  if (cfg.required && !token) throw new Error('NO_TOKEN')
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -139,23 +170,23 @@ const authedFetch = async <T = any>(path: string, opts: any = {}): Promise<T> =>
   return await $fetch<T>(`${apiBase}${path}`, { ...opts, headers })
 }
 
-/**
- * ✅ まずは API 追加なしで動かすため、GET /posts から該当投稿を探す
- * （将来的には GET /posts/{id} を作るのが理想）
- */
+const currentUid = computed(() => getAuth().currentUser?.uid ?? null)
+
 const loadPost = async () => {
   loading.value = true
   try {
     const res = await authedFetch<any>('/posts')
-    const raw = Array.isArray(res) ? res : (res?.data ?? [])
+    const raw = Array.isArray(res) ? res : res?.data ?? []
     const found = raw.find((p: any) => Number(p.id) === postId.value)
 
     post.value = found
       ? {
           id: found.id,
           content: found.content,
+          user_id: found.user_id,
           user_name: found.user_name,
           likes_count: found.likes_count ?? 0,
+          comments_count: found.comments_count ?? 0,
           comments: Array.isArray(found.comments) ? found.comments : [],
         }
       : null
@@ -170,42 +201,55 @@ const loadPost = async () => {
 onMounted(async () => {
   await requireAuth()
 
-  // displayName を localStorage に保存している運用なら、ここで同期しておくと安定
   const auth = getAuth()
   try {
     await auth.currentUser?.reload()
   } catch (_) {}
 
-  if (process.client && auth.currentUser?.displayName) {
-    localStorage.setItem('sns_user_name', auth.currentUser.displayName)
-  }
-
   await loadPost()
 })
 
-const submitComment = async () => {
-  const content = comment.value.trim()
-  if (!content) return
+const onSubmitComment = handleCommentSubmit(async (values) => {
   if (sending.value) return
   sending.value = true
 
   try {
-    await authedFetch('/comments', {
-      method: 'POST',
-      body: {
-        post_id: postId.value,
-        content,
-        user_name: currentUserName.value, // ✅ これ重要（表示名が揃う）
+    await authedFetch(
+      '/comments',
+      {
+        method: 'POST',
+        body: {
+          post_id: postId.value,
+          content: values.content,
+        },
       },
-    })
+      { required: true }
+    )
 
-    comment.value = ''
+    resetForm({ values: { content: '' } })
     await loadPost()
-  } catch (e) {
+  } catch (e: any) {
     console.error('POST /comments failed', e)
-    alert('コメントの送信に失敗しました。')
+    alert(String(e?.message) === 'NO_TOKEN' ? '再ログインしてください。' : 'コメントの送信に失敗しました。')
   } finally {
     sending.value = false
+  }
+})
+
+const canDelete = (p: Post) => {
+  const uid = currentUid.value
+  if (!uid) return false
+  return p.user_id === uid
+}
+
+const removePost = async (p: Post) => {
+  if (!confirm('削除しますか？')) return
+  try {
+    await authedFetch(`/posts/${p.id}`, { method: 'DELETE' }, { required: true })
+    await navigateTo('/')
+  } catch (e) {
+    console.error('DELETE /posts failed', e)
+    alert('削除に失敗しました。')
   }
 }
 
