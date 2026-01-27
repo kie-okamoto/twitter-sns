@@ -141,3 +141,55 @@ cp .env.example .env
 php artisan key:generate
 php artisan serve
 ```
+
+---
+
+## テスト（PHPUnit）
+
+本アプリでは、Laravel API 側に対して  
+**PHPUnit を用いた Feature Test（APIテスト）** を実装しています。
+
+Firebase Authentication を使用しているため、  
+テスト実行時は **Firebase認証をテスト用ミドルウェアで差し替える構成** を採用しています。
+
+---
+
+### テスト方針
+
+- Feature Test（API）
+- SQLite（in-memory）を使用
+- Firebase Authentication は **TestFirebaseToken ミドルウェアで擬似認証**
+- 実装仕様に沿った **正常系・異常系・権限制御** を確認
+
+---
+
+### テスト対象機能
+
+#### 投稿（Posts）
+- 投稿一覧取得（GET /posts）
+- 投稿作成（POST /posts）
+- 投稿バリデーション（120文字超で422）
+- 投稿削除（本人のみ可能）
+- 他人の投稿削除は403
+
+#### いいね（Likes）
+- いいね追加（POST /likes）
+- 重複いいね防止（idempotent）
+- いいね解除（DELETE /likes/{post}）
+- いいね数の正しい返却
+
+#### コメント（Comments）
+- コメント一覧取得（新しい順）
+- コメント投稿
+- バリデーション（必須 / 120文字以内）
+- 投稿時点の user_name をスナップショット保存
+
+---
+
+### テスト実行方法
+
+#### API（Laravel）側で実行
+```bash
+cd api
+php artisan test
+```

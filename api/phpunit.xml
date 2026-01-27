@@ -12,22 +12,49 @@
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
+
     <source>
         <include>
             <directory>app</directory>
         </include>
     </source>
+
     <php>
+        <!-- 基本 -->
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_DEBUG" value="true"/>
+
+        <!-- ✅ 重要：APP_KEY（これが無いと MissingAppKeyException になりやすい） -->
+        <env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="/>
+
+        <!-- メンテ -->
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+
+        <!-- 暗号/ハッシュ（高速化） -->
         <env name="BCRYPT_ROUNDS" value="4"/>
+
+        <!-- 通信系（無効化） -->
         <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+
+        <!-- ✅ キャッシュ/セッション（テストで安定させる） -->
+        <env name="CACHE_STORE" value="array"/>
         <env name="SESSION_DRIVER" value="array"/>
+
+        <!-- ✅ ログ（テスト中にログが邪魔なら stderr へ） -->
+        <env name="LOG_CHANNEL" value="stderr"/>
+
+        <!-- ✅ ファイル保存（画像など扱うときの事故防止） -->
+        <env name="FILESYSTEM_DISK" value="local"/>
+
+        <!-- ✅ DB：SQLite in-memory -->
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+        <!-- SQLiteでFK制約を有効化したい場合（効く環境だけでOK） -->
+        <env name="DB_FOREIGN_KEYS" value="true"/>
+
+        <!-- 観測系OFF -->
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

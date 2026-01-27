@@ -17,9 +17,11 @@ class CommentController extends Controller
     public function index(Post $post)
     {
         return $post->comments()
-            ->latest()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get(['id', 'post_id', 'user_id', 'user_name', 'content', 'created_at']);
     }
+
 
     /**
      * コメント作成（120文字）
