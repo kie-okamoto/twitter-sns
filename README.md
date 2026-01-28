@@ -184,6 +184,15 @@ Firebase Authentication を使用しているため、
 - バリデーション（必須 / 120文字以内）
 - 投稿時点の user_name をスナップショット保存
 
+### テスト用Firebase認証（重要）
+
+Firebase Authentication を利用しているため、テスト時は認証を擬似化しています。
+
+- テスト用ミドルウェア：`api/app/Http/Middleware/TestFirebaseToken.php`
+- Feature Test：`api/tests/Feature/PostsTest.php` / `LikesTest.php` / `CommentsTest.php`
+- DB：`phpunit.xml` で SQLite（in-memory）を使用
+
+
 ---
 
 ### テスト実行方法
@@ -193,3 +202,5 @@ Firebase Authentication を使用しているため、
 cd api
 php artisan test
 ```
+# 個別実行例
+php artisan test --filter PostsTest
