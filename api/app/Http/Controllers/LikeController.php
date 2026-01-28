@@ -32,11 +32,10 @@ class LikeController extends Controller
                 'post_id' => $data['post_id'],
             ]);
         } catch (QueryException $e) {
-            // 重複キー（unique(post_id, user_id)）だけは無視
-            $sqlState = $e->errorInfo[0] ?? null; // 例: 23000
-            $driverCode = $e->errorInfo[1] ?? null; // 例: 1062 (MySQL)
+            $sqlState = $e->errorInfo[0] ?? null; 
+            $driverCode = $e->errorInfo[1] ?? null; 
             if (!($sqlState === '23000' && (int)$driverCode === 1062)) {
-                throw $e; // ✅ それ以外は握りつぶさない
+                throw $e;
             }
         }
 

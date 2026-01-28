@@ -90,7 +90,6 @@ const schema = yup.object({
 
 const { errors, handleSubmit, defineField, isSubmitting } = useForm({
   validationSchema: schema,
-  // ✅ 入力中に勝手に検証しない（ボタン押下時のみ）
   validateOnBlur: false,
   validateOnChange: false,
   validateOnInput: false,
@@ -146,7 +145,6 @@ const submit = handleSubmit(async (values) => {
       await auth.currentUser.reload()
     }
 
-    // 4) 保険：localStorage にも保存（表示名が取れない場合のフォールバック用）
     if (process.client) {
       localStorage.setItem('sns_user_name', values.username)
     }

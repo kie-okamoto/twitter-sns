@@ -8,7 +8,7 @@ class StorePostRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // firebase middlewareで認証済み想定
+        return true; 
     }
 
     public function rules(): array

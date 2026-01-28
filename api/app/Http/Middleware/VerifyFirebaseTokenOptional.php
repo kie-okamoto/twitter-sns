@@ -43,7 +43,7 @@ class VerifyFirebaseTokenOptional
       // uid を載せる
       $request->attributes->set('firebase_uid', $uid);
 
-      // users 同期（A案）
+      // users
       $firebaseUser = $auth->getUser($uid);
       $displayName = $firebaseUser->displayName ?? null;
 
@@ -52,10 +52,8 @@ class VerifyFirebaseTokenOptional
         ['name' => $displayName ?: null]
       );
     } catch (FailedToVerifyToken $e) {
-      // ❗トークンが不正なら未ログイン扱いで通す
       $request->attributes->set('firebase_uid', null);
     } catch (\Throwable $e) {
-      // 予期せぬエラーも未ログイン扱いで通す（閲覧が落ちるのを防ぐ）
       $request->attributes->set('firebase_uid', null);
     }
 

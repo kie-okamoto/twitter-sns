@@ -39,7 +39,7 @@
   font-weight: 700;
 }
 
-/* 入力欄（丸み＋薄い枠） */
+/* 入力欄 */
 .auth-form input {
   height: 48px;
   padding: 0 14px;
@@ -114,7 +114,6 @@
 @media (max-width: 1023px) {
   .auth-page {
     min-height: calc(100vh - 56px);
-    /* ヘッダーが少し低い場合も想定 */
   }
 
   .auth-form {

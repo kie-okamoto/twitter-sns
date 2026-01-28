@@ -57,7 +57,7 @@ import * as yup from 'yup'
 
 const { login } = useAuth()
 
-// ✅ 仕様書どおり：ログインは「入力必須」だけ
+// ✅ ログインは「入力必須」だけ
 const schema = yup.object({
   email: yup
     .string()

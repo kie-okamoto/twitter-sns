@@ -8,7 +8,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* ✅ 縦中央 */
   background-color: #0f1824;
   padding: 12px 48px;
   width: 100%;
@@ -19,7 +18,6 @@
 .header__brand {
   display: inline-flex;
   align-items: center;
-  /* ✅ ロゴ縦中央 */
   text-decoration: none;
   gap: 10px;
 }

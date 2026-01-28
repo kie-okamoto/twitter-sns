@@ -14,7 +14,7 @@ class StoreCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'post_id' => ['required'], // 型は運用に合わせて（numeric/existsなど）
+            'post_id' => ['required'], 
             'content' => ['required', 'string', 'max:120'],
         ];
     }

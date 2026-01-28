@@ -1,4 +1,4 @@
-// すでにある useApi をこれで上書き
+
 import { getAuth } from 'firebase/auth'
 
 export const useApi = () => {
@@ -18,7 +18,6 @@ export const useApi = () => {
     const text = await res.text().catch(() => '')
 
     if (!res.ok) {
-      // ← ここで詳しい情報を投げ返す
       throw new Error(`[${res.status}] ${res.statusText} :: ${text}`)
     }
     return (text && res.headers.get('content-type')?.includes('json'))

@@ -9,7 +9,7 @@ class Like extends Model
 {
     protected $fillable = [
         'post_id',
-        'user_id', // Firebase UID
+        'user_id', 
     ];
 
     public $timestamps = true;

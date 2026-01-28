@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Post extends Model
 {
     protected $fillable = [
-        'user_id',     // Firebase UID
+        'user_id',     
         'content',
-        'user_name',   // 表示名スナップショット
+        'user_name',  
     ];
 
     public function user(): BelongsTo

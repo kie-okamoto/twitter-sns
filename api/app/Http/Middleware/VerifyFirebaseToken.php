@@ -46,16 +46,16 @@ class VerifyFirebaseToken
             $verified = $auth->verifyIdToken($token);
             $uid = (string) $verified->claims()->get('sub');
 
-            // ✅ uid を request に載せる
+            // uid を request に載せる
             $request->attributes->set('firebase_uid', $uid);
 
-            // ✅ Firebaseユーザー情報を取得（displayName/email は null の可能性あり）
+            // Firebaseユーザー情報を取得（displayName/email は null の可能性あり）
             $firebaseUser = $auth->getUser($uid);
 
             $displayName = $firebaseUser->displayName ?? null;
             $email = $firebaseUser->email ?? null;
 
-            // ✅ null で上書きしない（名前が消える事故を防ぐ）
+            // null で上書きしない（名前が消える事故を防ぐ）
             $updates = [];
             if (is_string($displayName) && trim($displayName) !== '') {
                 $updates['name'] = trim($displayName);

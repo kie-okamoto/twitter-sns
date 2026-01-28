@@ -9,20 +9,19 @@ import {
 } from 'firebase/auth'
 
 export const useAuth = () => {
-  // ✅ plugins/firebase.client.ts で provide した auth があればそれを使う
+
   const nuxtApp = useNuxtApp()
   const auth = (nuxtApp.$auth as ReturnType<typeof getAuth> | undefined) ?? getAuth()
 
   const user = useState<User | null>('auth-user', () => auth.currentUser)
 
-  // ✅ リスナー二重登録防止（グローバルStateでガード）
   const listenerSet = useState<boolean>('auth-listener-set', () => false)
   if (process.client && !listenerSet.value) {
     listenerSet.value = true
     onAuthStateChanged(auth, (u) => (user.value = u))
   }
 
-  // ✅ 新規登録（2引数に統一）
+  // ✅ 新規登録
   const register = async (email: string, password: string) => {
     try {
       return await createUserWithEmailAndPassword(auth, email, password)

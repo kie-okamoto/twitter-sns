@@ -20,7 +20,6 @@ class PostController extends Controller
     {
         $uid = $request->attributes->get('firebase_uid');
 
-        // 自分がいいねした post_id を set 化
         $likedSet = [];
         if ($uid) {
             $likedSet = Like::where('user_id', $uid)->pluck('post_id')->flip()->all();
@@ -76,7 +75,7 @@ class PostController extends Controller
         ]);
 
         // user_name は users から取得（偽装防止）
-        $userName = User::where('firebase_uid', $uid)->value('name'); // null 可
+        $userName = User::where('firebase_uid', $uid)->value('name');
 
         $post = Post::create([
             'user_id' => $uid,

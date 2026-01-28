@@ -26,7 +26,7 @@ return new class extends Migration {
                 ->references('firebase_uid')->on('users')
                 ->cascadeOnDelete();
 
-            // 一覧や削除判定でよく使う
+            // 一覧や削除判定
             $table->index('user_id');
         });
     }
